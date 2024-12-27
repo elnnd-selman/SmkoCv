@@ -214,7 +214,7 @@ export default function CVPortfolio() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const generatePDF = async () => {
-    window.location.href = '/smko_salah_jawhar_sv.pdf';
+    window.location.href = '/smko_salah_jawhar_cv.pdf';
 
   };
 
