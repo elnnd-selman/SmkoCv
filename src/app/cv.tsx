@@ -23,6 +23,16 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+// =====================
+// Add global or module CSS for .pdf-fixed-size
+// =====================
+const globalPdfStyle = `
+  .pdf-fixed-size {
+    width: 1200px !important; /* Force a desktop width for PDF */
+    max-width: 1200px !important;
+  }
+`;
+
 interface Job {
   title: string;
   company: string;
@@ -206,214 +216,241 @@ export default function CVPortfolio() {
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const generatePDF = async () => {
-    if (pdfRef.current) {
-      // Force large/desktop layout by ignoring responsiveness:
-      // e.g., if you use Tailwind, you can ensure no responsive classes in the container below
-      // and fix its width to a certain value (like 1200px).
+    if (!pdfRef.current) return;
 
+    // 1) Temporarily apply the .pdf-fixed-size class to enforce desktop width
+    pdfRef.current.classList.add('pdf-fixed-size');
+
+    try {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      let currentHeight = 10; // Starting Y position (top margin)
+      let currentHeight = 10;
 
-      // Grab each .pdf-section individually, so we don’t cut them in half.
+      // 2) Collect each .pdf-section separately
       const sections = pdfRef.current.querySelectorAll('.pdf-section');
 
       for (let i = 0; i < sections.length; i++) {
         const section = sections[i] as HTMLElement;
-        
-        // Render this section to canvas
+
+        // Use html2canvas on each section
         const canvas = await html2canvas(section, { scale: 2 });
         const imgData = canvas.toDataURL('image/png');
-
-        // Calculate image dimensions
         const imgProps = pdf.getImageProperties(imgData);
-        const imgWidth = pdfWidth - 20; // 10mm margin on each side
+        const imgWidth = pdfWidth - 20; // 10mm margins
         const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
-        // If it doesn't fit on the current page, go to new page
+        // Check if current section fits on the remaining page
         if (currentHeight + imgHeight > pdfHeight - 10) {
           pdf.addPage();
           currentHeight = 10;
         }
 
-        // Add the image of the section
         pdf.addImage(imgData, 'PNG', 10, currentHeight, imgWidth, imgHeight);
-        currentHeight += imgHeight + 10; // Some gap after the section
+        currentHeight += imgHeight + 10;
       }
 
       pdf.save('Smko_Salah_Jawhar_CV.pdf');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+    } finally {
+      // 3) Remove the .pdf-fixed-size class to restore responsiveness
+      pdfRef.current.classList.remove('pdf-fixed-size');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 py-10 px-4">
-      {/* 
-        Force desktop styling for the PDF container:
-        - Remove responsive classes that might shrink it on smaller screens.
-        - Fix width to something like 1200px to ensure it's always "large".
-      */}
-      <div
-        ref={pdfRef}
-        className="mx-auto w-[1200px] bg-white shadow-xl rounded-lg overflow-hidden" 
-      >
-        {/* Header Section */}
-        <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8 pdf-section">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-4xl font-bold">Smko Salah Jawhar</h1>
-                <FaDownload className="text-5xl md:hidden" />
+    <>
+      {/* Add the style snippet (or place it in a global CSS) */}
+      <style>{globalPdfStyle}</style>
+
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 py-10 px-4 sm:px-6 lg:px-8">
+        <div
+          ref={pdfRef}
+          // Keep your normal responsive Tailwind classes for the website
+          // The .pdf-fixed-size class only applies temporarily when generating PDF
+          className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg overflow-hidden"
+        >
+          {/* Header Section */}
+          <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8 rounded-lg pdf-section">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-4">
+                  <h1 className="text-4xl font-bold">Smko Salah Jawhar</h1>
+                  <FaDownload className="text-5xl md:hidden" />
+                </div>
+                <h2 className="text-2xl font-semibold mb-4">Real Estate Professional</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center">
+                    <FaEnvelope className="mr-2" />
+                    <span>smko1salah@gmail.com</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaPhone className="mr-2" />
+                    <span>+964 770 124 6383</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaMapMarkerAlt className="mr-2" />
+                    <span>Erbil, Iraq</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaBirthdayCake className="mr-2" />
+                    <span>April 15th, 1997</span>
+                  </div>
+                </div>
               </div>
-              <h2 className="text-2xl font-semibold mb-4">Real Estate Professional</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center">
-                  <FaEnvelope className="mr-2" />
-                  <span>smko1salah@gmail.com</span>
-                </div>
-                <div className="flex items-center">
-                  <FaPhone className="mr-2" />
-                  <span>+964 770 124 6383</span>
-                </div>
-                <div className="flex items-center">
-                  <FaMapMarkerAlt className="mr-2" />
-                  <span>Erbil, Iraq</span>
-                </div>
-                <div className="flex items-center">
-                  <FaBirthdayCake className="mr-2" />
-                  <span>April 15th, 1997</span>
-                </div>
+              <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-white shadow-xl">
+                <img
+                  src="/smko.jpeg" // Ensure this image is placed in the public folder
+                  alt="Smko Salah Jawhar"
+                  className="object-cover w-full h-full"
+                />
               </div>
             </div>
-            <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-white shadow-xl">
-              <img
-                src="/smko.jpeg" 
-                alt="Smko Salah Jawhar"
-                className="object-cover w-full h-full"
-              />
-            </div>
-          </div>
-        </header>
+          </header>
 
-        <div className="p-8 space-y-8">
-          {/* Profile Section */}
-          <section className="bg-blue-50 p-6 rounded-lg shadow-sm border border-blue-200 pdf-section">
-            <h2 className="text-2xl font-semibold mb-4 text-blue-800">Profile</h2>
-            <p className="text-gray-700 leading-relaxed">
-              As a dedicated Real Estate Professional with over two years of experience, I bring a wealth of knowledge in property sales, marketing, and team leadership. My tenure as Branch Manager at Malu Mulk Company saw our team consistently surpass sales targets. I pride myself on forging genuine connections with clients, ensuring a smooth property search experience, and delivering complete satisfaction. My expertise in crafting effective marketing strategies uniquely showcases properties and drives client engagement. Grounded in principles of honesty, teamwork, and unwavering work ethic, I consistently strive for success – not just for myself, but for my clients and team as well.
-            </p>
-          </section>
+          <div className="p-8 space-y-8">
+            {/* Profile Section */}
+            <section className="bg-blue-50 p-6 rounded-lg shadow-sm border border-blue-200 pdf-section">
+              <h2 className="text-2xl font-semibold mb-4 text-blue-800">Profile</h2>
+              <p className="text-gray-700 leading-relaxed">
+                As a dedicated Real Estate Professional with over two years of experience, I bring a wealth
+                of knowledge in property sales, marketing, and team leadership. My tenure as Branch Manager
+                at Malu Mulk Company saw our team consistently surpass sales targets. I pride myself on
+                forging genuine connections with clients, ensuring a smooth property search experience, and
+                delivering complete satisfaction. My expertise in crafting effective marketing strategies
+                uniquely showcases properties and drives client engagement. Grounded in principles of honesty,
+                teamwork, and unwavering work ethic, I consistently strive for success – not just for myself,
+                but for my clients and team as well.
+              </p>
+            </section>
 
-          {/* Experience Section */}
-          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Professional Experience</h2>
-          {/* Instead of one big pdf-section, each job is its own pdf-section */}
-          {jobs.map((job, index) => (
-            <section key={index} className="pdf-section">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
+            {/* Experience Section */}
+            <section>
+              <h2 className="text-2xl font-semibold mb-6 text-blue-800">Professional Experience</h2>
+              {jobs.map((job, index) => (
+                <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-blue-200 mb-6 pdf-section">
+                  <div className="flex items-center mb-4">
+                    {job.icon}
+                    <div className="ml-4">
+                      <h3 className="text-xl font-semibold text-blue-800">{job.title}</h3>
+                      <p className="text-blue-600 font-medium">{job.company || 'Self-Employed'}</p>
+                      <p className="text-gray-600">{job.period}</p>
+                    </div>
+                  </div>
+                  <ul className="list-disc pl-5 space-y-2">
+                    {job.responsibilities.map((resp, idx) => (
+                      <li key={idx} className="text-gray-700">
+                        {resp}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+
+            {/* Skills Section */}
+            <section>
+              <h2 className="text-2xl font-semibold mb-6 text-blue-800">Key Skills</h2>
+              {skillCategories.map((category, index) => (
+                <div
+                  key={index}
+                  className="bg-white p-6 rounded-lg shadow-sm border border-blue-200 mb-6 pdf-section"
+                >
+                  <div className="flex items-center mb-4">
+                    {category.icon}
+                    <h3 className="text-lg font-semibold ml-4 text-blue-800">{category.category}</h3>
+                  </div>
+                  <ul className="list-disc pl-5 space-y-2">
+                    {category.skills.map((skill, idx) => (
+                      <li key={idx} className="text-gray-700">
+                        {skill}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+
+            {/* Education Section */}
+            <section>
+              <h2 className="text-2xl font-semibold mb-6 text-blue-800">Education</h2>
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200 pdf-section">
                 <div className="flex items-center mb-4">
-                  {job.icon}
+                  <FaGraduationCap className="text-3xl text-blue-600" />
                   <div className="ml-4">
-                    <h3 className="text-xl font-semibold text-blue-800">{job.title}</h3>
-                    <p className="text-blue-600 font-medium">{job.company || 'Self-Employed'}</p>
-                    <p className="text-gray-600">{job.period}</p>
+                    <h3 className="text-xl font-semibold text-blue-800">
+                      Bachelor of Arts in English Language and Literature
+                    </h3>
+                    <p className="text-blue-600 font-medium">University of Sulaymaniyah, Sulaymaniyah</p>
+                    <p className="text-gray-600">Graduated in 2022</p>
                   </div>
                 </div>
                 <ul className="list-disc pl-5 space-y-2">
-                  {job.responsibilities.map((resp, idx) => (
-                    <li key={idx} className="text-gray-700">{resp}</li>
+                  <li className="text-gray-700">
+                    Developed strong communication, analytical, and interpersonal skills.
+                  </li>
+                  <li className="text-gray-700">
+                    Completed coursework in linguistics, communication, and cultural studies, which
+                    provided a solid foundation for client relations and marketing.
+                  </li>
+                  <li className="text-gray-700">
+                    Engaged in projects and activities that enhanced organizational and problem-solving
+                    skills.
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            {/* Languages Section */}
+            <section>
+              <h2 className="text-2xl font-semibold mb-6 text-blue-800">Languages</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {languages.map((lang, index) => (
+                  <div
+                    key={index}
+                    className="bg-white p-6 rounded-lg shadow-sm border border-blue-200 pdf-section"
+                  >
+                    <div className="flex items-center mb-4">
+                      <FaLanguage className="text-3xl text-blue-600" />
+                      <h3 className="text-lg font-semibold ml-4 text-blue-800">{lang.name}</h3>
+                    </div>
+                    <p className="text-blue-600 font-medium">{lang.level}</p>
+                    <p className="text-gray-700 mt-2">{lang.description}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Hobbies Section */}
+            <section>
+              <h2 className="text-2xl font-semibold mb-6 text-blue-800">Hobbies and Interests</h2>
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200 pdf-section">
+                <ul className="space-y-4">
+                  {hobbies.map((hobby, index) => (
+                    <li key={index} className="flex items-center">
+                      {hobby.icon}
+                      <span className="ml-4 text-gray-700">{hobby.text}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
             </section>
-          ))}
+          </div>
 
-          {/* Skills Section */}
-          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Key Skills</h2>
-          {skillCategories.map((category, index) => (
-            <section key={index} className="pdf-section">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-                <div className="flex items-center mb-4">
-                  {category.icon}
-                  <h3 className="text-lg font-semibold ml-4 text-blue-800">{category.category}</h3>
-                </div>
-                <ul className="list-disc pl-5 space-y-2">
-                  {category.skills.map((skill, idx) => (
-                    <li key={idx} className="text-gray-700">{skill}</li>
-                  ))}
-                </ul>
-              </div>
-            </section>
-          ))}
-
-          {/* Education Section */}
-          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Education</h2>
-          <section className="pdf-section">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-              <div className="flex items-center mb-4">
-                <FaGraduationCap className="text-3xl text-blue-600" />
-                <div className="ml-4">
-                  <h3 className="text-xl font-semibold text-blue-800">
-                    Bachelor of Arts in English Language and Literature
-                  </h3>
-                  <p className="text-blue-600 font-medium">University of Sulaymaniyah, Sulaymaniyah</p>
-                  <p className="text-gray-600">Graduated in 2022</p>
-                </div>
-              </div>
-              <ul className="list-disc pl-5 space-y-2">
-                <li className="text-gray-700">
-                  Developed strong communication, analytical, and interpersonal skills.
-                </li>
-                <li className="text-gray-700">
-                  Completed coursework in linguistics, communication, and cultural studies, which provided a solid foundation for client relations and marketing.
-                </li>
-                <li className="text-gray-700">
-                  Engaged in projects and activities that enhanced organizational and problem-solving skills.
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          {/* Languages Section */}
-          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Languages</h2>
-          {languages.map((lang, index) => (
-            <section key={index} className="pdf-section">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-                <div className="flex items-center mb-4">
-                  <FaLanguage className="text-3xl text-blue-600" />
-                  <h3 className="text-lg font-semibold ml-4 text-blue-800">{lang.name}</h3>
-                </div>
-                <p className="text-blue-600 font-medium">{lang.level}</p>
-                <p className="text-gray-700 mt-2">{lang.description}</p>
-              </div>
-            </section>
-          ))}
-
-          {/* Hobbies Section */}
-          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Hobbies and Interests</h2>
-          {hobbies.map((hobby, index) => (
-            <section key={index} className="pdf-section">
-              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-                <div className="flex items-center">
-                  {hobby.icon}
-                  <span className="ml-4 text-gray-700">{hobby.text}</span>
-                </div>
-              </div>
-            </section>
-          ))}
-        </div>
-
-        {/* Download CV Button */}
-        <div className="bg-blue-100 p-6 text-center">
-          <button
-            onClick={generatePDF}
-            aria-label="Download Smko Salah Jawhar's CV as PDF"
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out"
-          >
-            <FaDownload className="mr-2" />
-            Download CV
-          </button>
+          {/* Download CV Button */}
+          <div className="bg-blue-100 p-6 text-center">
+            <button
+              onClick={generatePDF}
+              aria-label="Download Smko Salah Jawhar's CV as PDF"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out"
+            >
+              <FaDownload className="mr-2" />
+              Download CV
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
