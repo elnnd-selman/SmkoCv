@@ -207,29 +207,39 @@ export default function CVPortfolio() {
 
   const generatePDF = async () => {
     if (pdfRef.current) {
-      const input = pdfRef.current;
+      // Force large/desktop layout by ignoring responsiveness:
+      // e.g., if you use Tailwind, you can ensure no responsive classes in the container below
+      // and fix its width to a certain value (like 1200px).
+
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+      let currentHeight = 10; // Starting Y position (top margin)
 
-      const sections = input.querySelectorAll('.pdf-section');
-      let currentHeight = 10; // Starting Y position
+      // Grab each .pdf-section individually, so we don’t cut them in half.
+      const sections = pdfRef.current.querySelectorAll('.pdf-section');
 
       for (let i = 0; i < sections.length; i++) {
-        const section = sections[i];
-        const canvas = await html2canvas(section as HTMLElement, { scale: 2 });
+        const section = sections[i] as HTMLElement;
+        
+        // Render this section to canvas
+        const canvas = await html2canvas(section, { scale: 2 });
         const imgData = canvas.toDataURL('image/png');
+
+        // Calculate image dimensions
         const imgProps = pdf.getImageProperties(imgData);
         const imgWidth = pdfWidth - 20; // 10mm margin on each side
         const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
+        // If it doesn't fit on the current page, go to new page
         if (currentHeight + imgHeight > pdfHeight - 10) {
           pdf.addPage();
           currentHeight = 10;
         }
 
+        // Add the image of the section
         pdf.addImage(imgData, 'PNG', 10, currentHeight, imgWidth, imgHeight);
-        currentHeight += imgHeight + 10; // Adding some space after each section
+        currentHeight += imgHeight + 10; // Some gap after the section
       }
 
       pdf.save('Smko_Salah_Jawhar_CV.pdf');
@@ -237,10 +247,18 @@ export default function CVPortfolio() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg overflow-hidden" ref={pdfRef}>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 py-10 px-4">
+      {/* 
+        Force desktop styling for the PDF container:
+        - Remove responsive classes that might shrink it on smaller screens.
+        - Fix width to something like 1200px to ensure it's always "large".
+      */}
+      <div
+        ref={pdfRef}
+        className="mx-auto w-[1200px] bg-white shadow-xl rounded-lg overflow-hidden" 
+      >
         {/* Header Section */}
-        <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8 rounded-lg pdf-section">
+        <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-8 pdf-section">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex-1">
               <div className="flex items-center justify-between mb-4">
@@ -269,7 +287,7 @@ export default function CVPortfolio() {
             </div>
             <div className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-white shadow-xl">
               <img
-                src="/smko.jpeg" // Ensure this image is placed in the public folder
+                src="/smko.jpeg" 
                 alt="Smko Salah Jawhar"
                 className="object-cover w-full h-full"
               />
@@ -287,100 +305,101 @@ export default function CVPortfolio() {
           </section>
 
           {/* Experience Section */}
-          <section className="pdf-section">
-            <h2 className="text-2xl font-semibold mb-6 text-blue-800">Professional Experience</h2>
-            <div className="space-y-6">
-              {jobs.map((job, index) => (
-                <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-                  <div className="flex items-center mb-4">
-                    {job.icon}
-                    <div className="ml-4">
-                      <h3 className="text-xl font-semibold text-blue-800">{job.title}</h3>
-                      <p className="text-blue-600 font-medium">{job.company || 'Self-Employed'}</p>
-                      <p className="text-gray-600">{job.period}</p>
-                    </div>
+          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Professional Experience</h2>
+          {/* Instead of one big pdf-section, each job is its own pdf-section */}
+          {jobs.map((job, index) => (
+            <section key={index} className="pdf-section">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
+                <div className="flex items-center mb-4">
+                  {job.icon}
+                  <div className="ml-4">
+                    <h3 className="text-xl font-semibold text-blue-800">{job.title}</h3>
+                    <p className="text-blue-600 font-medium">{job.company || 'Self-Employed'}</p>
+                    <p className="text-gray-600">{job.period}</p>
                   </div>
-                  <ul className="list-disc pl-5 space-y-2">
-                    {job.responsibilities.map((resp, idx) => (
-                      <li key={idx} className="text-gray-700">{resp}</li>
-                    ))}
-                  </ul>
                 </div>
-              ))}
-            </div>
-          </section>
+                <ul className="list-disc pl-5 space-y-2">
+                  {job.responsibilities.map((resp, idx) => (
+                    <li key={idx} className="text-gray-700">{resp}</li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          ))}
 
           {/* Skills Section */}
-          <section className="pdf-section">
-            <h2 className="text-2xl font-semibold mb-6 text-blue-800">Key Skills</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {skillCategories.map((category, index) => (
-                <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-                  <div className="flex items-center mb-4">
-                    {category.icon}
-                    <h3 className="text-lg font-semibold ml-4 text-blue-800">{category.category}</h3>
-                  </div>
-                  <ul className="list-disc pl-5 space-y-2">
-                    {category.skills.map((skill, idx) => (
-                      <li key={idx} className="text-gray-700">{skill}</li>
-                    ))}
-                  </ul>
+          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Key Skills</h2>
+          {skillCategories.map((category, index) => (
+            <section key={index} className="pdf-section">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
+                <div className="flex items-center mb-4">
+                  {category.icon}
+                  <h3 className="text-lg font-semibold ml-4 text-blue-800">{category.category}</h3>
                 </div>
-              ))}
-            </div>
-          </section>
+                <ul className="list-disc pl-5 space-y-2">
+                  {category.skills.map((skill, idx) => (
+                    <li key={idx} className="text-gray-700">{skill}</li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          ))}
 
           {/* Education Section */}
+          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Education</h2>
           <section className="pdf-section">
-            <h2 className="text-2xl font-semibold mb-6 text-blue-800">Education</h2>
             <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
               <div className="flex items-center mb-4">
                 <FaGraduationCap className="text-3xl text-blue-600" />
                 <div className="ml-4">
-                  <h3 className="text-xl font-semibold text-blue-800">Bachelor of Arts in English Language and Literature</h3>
+                  <h3 className="text-xl font-semibold text-blue-800">
+                    Bachelor of Arts in English Language and Literature
+                  </h3>
                   <p className="text-blue-600 font-medium">University of Sulaymaniyah, Sulaymaniyah</p>
                   <p className="text-gray-600">Graduated in 2022</p>
                 </div>
               </div>
               <ul className="list-disc pl-5 space-y-2">
-                <li className="text-gray-700">Developed strong communication, analytical, and interpersonal skills.</li>
-                <li className="text-gray-700">Completed coursework in linguistics, communication, and cultural studies, which provided a solid foundation for client relations and marketing.</li>
-                <li className="text-gray-700">Engaged in projects and activities that enhanced organizational and problem-solving skills.</li>
+                <li className="text-gray-700">
+                  Developed strong communication, analytical, and interpersonal skills.
+                </li>
+                <li className="text-gray-700">
+                  Completed coursework in linguistics, communication, and cultural studies, which provided a solid foundation for client relations and marketing.
+                </li>
+                <li className="text-gray-700">
+                  Engaged in projects and activities that enhanced organizational and problem-solving skills.
+                </li>
               </ul>
             </div>
           </section>
 
           {/* Languages Section */}
-          <section className="pdf-section">
-            <h2 className="text-2xl font-semibold mb-6 text-blue-800">Languages</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {languages.map((lang, index) => (
-                <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-                  <div className="flex items-center mb-4">
-                    <FaLanguage className="text-3xl text-blue-600" />
-                    <h3 className="text-lg font-semibold ml-4 text-blue-800">{lang.name}</h3>
-                  </div>
-                  <p className="text-blue-600 font-medium">{lang.level}</p>
-                  <p className="text-gray-700 mt-2">{lang.description}</p>
+          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Languages</h2>
+          {languages.map((lang, index) => (
+            <section key={index} className="pdf-section">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
+                <div className="flex items-center mb-4">
+                  <FaLanguage className="text-3xl text-blue-600" />
+                  <h3 className="text-lg font-semibold ml-4 text-blue-800">{lang.name}</h3>
                 </div>
-              ))}
-            </div>
-          </section>
+                <p className="text-blue-600 font-medium">{lang.level}</p>
+                <p className="text-gray-700 mt-2">{lang.description}</p>
+              </div>
+            </section>
+          ))}
 
           {/* Hobbies Section */}
-          <section className="pdf-section">
-            <h2 className="text-2xl font-semibold mb-6 text-blue-800">Hobbies and Interests</h2>
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
-              <ul className="space-y-4">
-                {hobbies.map((hobby, index) => (
-                  <li key={index} className="flex items-center">
-                    {hobby.icon}
-                    <span className="ml-4 text-gray-700">{hobby.text}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
+          <h2 className="text-2xl font-semibold mb-6 text-blue-800">Hobbies and Interests</h2>
+          {hobbies.map((hobby, index) => (
+            <section key={index} className="pdf-section">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-blue-200">
+                <div className="flex items-center">
+                  {hobby.icon}
+                  <span className="ml-4 text-gray-700">{hobby.text}</span>
+                </div>
+              </div>
+            </section>
+          ))}
         </div>
 
         {/* Download CV Button */}
